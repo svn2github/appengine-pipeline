@@ -27,9 +27,7 @@ import datetime
 import inspect
 import logging
 import os
-
-# Relative imports
-import simplejson
+import json
 
 # pylint: disable=protected-access
 
@@ -151,7 +149,7 @@ def is_generator_function(obj):
                obj.func_code.co_flags & CO_GENERATOR))
 
 
-class JsonEncoder(simplejson.JSONEncoder):
+class JsonEncoder(json.JSONEncoder):
   """Pipeline customized json encoder."""
 
   TYPE_ID = "__pipeline_json_type"
@@ -163,16 +161,16 @@ class JsonEncoder(simplejson.JSONEncoder):
       json_struct = encoder(o)
       json_struct[self.TYPE_ID] = type(o).__name__
       return json_struct
-    return super(JsonEncoder, self).default(o)
+    return json.JSONEncoder.default(self, o)
 
 
-class JsonDecoder(simplejson.JSONDecoder):
+class JsonDecoder(json.JSONDecoder):
   """Pipeline customized json decoder."""
 
   def __init__(self, **kwargs):
     if "object_hook" not in kwargs:
       kwargs["object_hook"] = self._dict_to_obj
-    super(JsonDecoder, self).__init__(**kwargs)
+    json.JSONDecoder.__init__(self, **kwargs)
 
   def _dict_to_obj(self, d):
     """Converts a dictionary of json object to a Python object."""

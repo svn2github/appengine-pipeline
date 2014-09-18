@@ -22,7 +22,6 @@ import random
 
 from google.appengine.api import mail
 from google.appengine.api import taskqueue
-from google.appengine.ext import webapp
 
 import pipeline
 
