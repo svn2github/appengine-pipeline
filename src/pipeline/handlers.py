@@ -21,18 +21,9 @@ In a separate file from the core pipeline module to break circular dependencies.
 
 import logging
 
-from google.appengine.ext import webapp
-from google.appengine.ext.webapp import util as webapp_util
+import webapp2
 
 import pipeline
 
 
-_APP = webapp.WSGIApplication(pipeline.create_handlers_map(), debug=True)
-
-
-def _main():
-  webapp_util.run_wsgi_app(_APP)
-
-
-if __name__ == '__main__':
-  _main()
+_APP = webapp2.WSGIApplication(pipeline.create_handlers_map(), debug=True)

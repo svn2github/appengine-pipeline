@@ -161,7 +161,7 @@ class JsonEncoder(json.JSONEncoder):
       json_struct = encoder(o)
       json_struct[self.TYPE_ID] = type(o).__name__
       return json_struct
-    return json.JsonEncoder.default(self, o)
+    return json.JSONEncoder.default(self, o)
 
 
 class JsonDecoder(json.JSONDecoder):
@@ -170,7 +170,7 @@ class JsonDecoder(json.JSONDecoder):
   def __init__(self, **kwargs):
     if "object_hook" not in kwargs:
       kwargs["object_hook"] = self._dict_to_obj
-    json.JsonDecoder.__init__(self, **kwargs)
+    json.JSONDecoder.__init__(self, **kwargs)
 
   def _dict_to_obj(self, d):
     """Converts a dictionary of json object to a Python object."""

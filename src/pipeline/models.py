@@ -177,7 +177,7 @@ class _BarrierRecord(ndb.Model):
 
   root_pipeline = ndb.KeyProperty(kind=_PipelineRecord)
   # The following used: collection_name='called_barrier_set')
-  target = ndb.KeyProperty(kind=_PipelineRecord,
+  target = ndb.KeyProperty(kind=_PipelineRecord)
   blocking_slots = ndb.KeyProperty(repeated=True)
   trigger_time = ndb.DateTimeProperty(indexed=False)
   status = ndb.StringProperty(choices=(FIRED, WAITING), default=WAITING,
