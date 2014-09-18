@@ -20,16 +20,16 @@ import logging
 import os
 import pkgutil
 import traceback
+import json
 
+import webapp2
 from google.appengine.api import users
-from google.appengine.ext import webapp
 
 # Relative imports
-import simplejson
 import util
 
 
-class _StatusUiHandler(webapp.RequestHandler):
+class _StatusUiHandler(webapp2.RequestHandler):
   """Render the status UI."""
 
   _RESOURCE_MAP = {
@@ -96,7 +96,7 @@ class _StatusUiHandler(webapp.RequestHandler):
     self.response.out.write(data or open(path, 'rb').read())
 
 
-class _BaseRpcHandler(webapp.RequestHandler):
+class _BaseRpcHandler(webapp2.RequestHandler):
   """Base handler for JSON-RPC responses.
 
   Sub-classes should fill in the 'json_response' property. All exceptions will
@@ -121,13 +121,13 @@ class _BaseRpcHandler(webapp.RequestHandler):
     self.json_response = {}
     try:
       self.handle()
-      output = simplejson.dumps(self.json_response, cls=util.JsonEncoder)
+      output = json.dumps(self.json_response, cls=util.JsonEncoder)
     except Exception, e:
       self.json_response.clear()
       self.json_response['error_class'] = e.__class__.__name__
       self.json_response['error_message'] = str(e)
       self.json_response['error_traceback'] = traceback.format_exc()
-      output = simplejson.dumps(self.json_response, cls=util.JsonEncoder)
+      output = json.dumps(self.json_response, cls=util.JsonEncoder)
 
     self.response.set_status(200)
     self.response.headers['Content-Type'] = 'text/javascript'

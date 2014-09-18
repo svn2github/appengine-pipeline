@@ -16,15 +16,15 @@
 
 """Datastore models used by the Google App Engine Pipeline API."""
 
-from google.appengine.ext import db
-from google.appengine.ext import blobstore
+import json
+
+from google.appengine.ext import ndb
 
 # Relative imports
-import simplejson
 import util
 
 
-class _PipelineRecord(db.Model):
+class _PipelineRecord(ndb.Model):
   """Represents a Pipeline.
 
   Properties:
@@ -56,31 +56,30 @@ class _PipelineRecord(db.Model):
   DONE = 'done'
   ABORTED = 'aborted'
 
-  class_path = db.StringProperty()
-  root_pipeline = db.SelfReferenceProperty(
-                      collection_name='child_pipelines_set')
-  fanned_out = db.ListProperty(db.Key, indexed=False)
-  start_time = db.DateTimeProperty(indexed=True)
-  finalized_time = db.DateTimeProperty(indexed=False)
+  class_path = ndb.StringProperty()
+  # The following used: collection_name='child_pipelines_set')
+  root_pipeline = ndb.KeyProperty(kind='_PipelineRecord')
+  fanned_out = ndb.KeyProperty(repeated=True, indexed=False)
+  start_time = ndb.DateTimeProperty(indexed=True)
+  finalized_time = ndb.DateTimeProperty(indexed=False)
 
   # One of these two will be set, depending on the size of the params.
-  params_text = db.TextProperty(name='params')
-  params_blob = blobstore.BlobReferenceProperty(
-      name='params_blob', indexed=False)
+  params_text = ndb.TextProperty(name='params')
+  params_blob = ndb.BlobKeyProperty(name='params_blob', indexed=False)
 
-  status = db.StringProperty(choices=(WAITING, RUN, DONE, ABORTED),
+  status = ndb.StringProperty(choices=(WAITING, RUN, DONE, ABORTED),
                              default=WAITING)
 
   # Retry behavior
-  current_attempt = db.IntegerProperty(default=0, indexed=False)
-  max_attempts = db.IntegerProperty(default=1, indexed=False)
-  next_retry_time = db.DateTimeProperty(indexed=False)
-  retry_message = db.TextProperty()
+  current_attempt = ndb.IntegerProperty(default=0, indexed=False)
+  max_attempts = ndb.IntegerProperty(default=1, indexed=False)
+  next_retry_time = ndb.DateTimeProperty(indexed=False)
+  retry_message = ndb.TextProperty()
 
   # Root pipeline properties
-  is_root_pipeline = db.BooleanProperty()
-  abort_message = db.TextProperty()
-  abort_requested = db.BooleanProperty(indexed=False)
+  is_root_pipeline = ndb.BooleanProperty()
+  abort_message = ndb.TextProperty()
+  abort_requested = ndb.BooleanProperty(indexed=False)
 
   @classmethod
   def kind(cls):
@@ -97,7 +96,7 @@ class _PipelineRecord(db.Model):
     else:
       value_encoded = self.params_text
 
-    value = simplejson.loads(value_encoded, cls=util.JsonDecoder)
+    value = json.loads(value_encoded, cls=util.JsonDecoder)
     if isinstance(value, dict):
       kwargs = value.get('kwargs')
       if kwargs:
@@ -111,7 +110,7 @@ class _PipelineRecord(db.Model):
     return self._params_decoded
 
 
-class _SlotRecord(db.Model):
+class _SlotRecord(ndb.Model):
   """Represents an output slot.
 
   Properties:
@@ -125,18 +124,17 @@ class _SlotRecord(db.Model):
   FILLED = 'filled'
   WAITING = 'waiting'
 
-  root_pipeline = db.ReferenceProperty(_PipelineRecord)
-  filler = db.ReferenceProperty(_PipelineRecord,
-                                collection_name='filled_slots_set')
+  root_pipeline = ndb.KeyProperty(kind=_PipelineRecord)
+  # The following used: collection_name='filled_slots_set')
+  filler = ndb.KeyProperty(kind=_PipelineRecord)
 
   # One of these two will be set, depending on the size of the value.
-  value_text = db.TextProperty(name='value')
-  value_blob = blobstore.BlobReferenceProperty(
-      name='value_blob', indexed=False)
+  value_text = ndb.TextProperty(name='value')
+  value_blob = ndb.BlobKeyProperty(name='value_blob', indexed=False)
 
-  status = db.StringProperty(choices=(FILLED, WAITING), default=WAITING,
+  status = ndb.StringProperty(choices=(FILLED, WAITING), default=WAITING,
                              indexed=False)
-  fill_time = db.DateTimeProperty(indexed=False)
+  fill_time = ndb.DateTimeProperty(indexed=False)
 
   @classmethod
   def kind(cls):
@@ -153,11 +151,11 @@ class _SlotRecord(db.Model):
     else:
       encoded_value = self.value_text
 
-    self._value_decoded = simplejson.loads(encoded_value, cls=util.JsonDecoder)
+    self._value_decoded = json.loads(encoded_value, cls=util.JsonDecoder)
     return self._value_decoded
 
 
-class _BarrierRecord(db.Model):
+class _BarrierRecord(ndb.Model):
   """Represents a barrier.
 
   Properties:
@@ -177,12 +175,12 @@ class _BarrierRecord(db.Model):
   FINALIZE = 'finalize'
   ABORT = 'abort'
 
-  root_pipeline = db.ReferenceProperty(_PipelineRecord)
-  target = db.ReferenceProperty(_PipelineRecord,
-                                collection_name='called_barrier_set')
-  blocking_slots = db.ListProperty(db.Key)
-  trigger_time = db.DateTimeProperty(indexed=False)
-  status = db.StringProperty(choices=(FIRED, WAITING), default=WAITING,
+  root_pipeline = ndb.KeyProperty(kind=_PipelineRecord)
+  # The following used: collection_name='called_barrier_set')
+  target = ndb.KeyProperty(kind=_PipelineRecord,
+  blocking_slots = ndb.KeyProperty(repeated=True)
+  trigger_time = ndb.DateTimeProperty(indexed=False)
+  status = ndb.StringProperty(choices=(FIRED, WAITING), default=WAITING,
                              indexed=False)
 
   @classmethod
@@ -190,7 +188,7 @@ class _BarrierRecord(db.Model):
     return '_AE_Pipeline_Barrier'
 
 
-class _StatusRecord(db.Model):
+class _StatusRecord(ndb.Model):
   """Represents the current status of a pipeline.
 
   Properties:
@@ -201,12 +199,12 @@ class _StatusRecord(db.Model):
     status_time: When the status was written.
   """
 
-  root_pipeline = db.ReferenceProperty(_PipelineRecord)
-  message = db.TextProperty()
-  console_url = db.TextProperty()
-  link_names = db.ListProperty(db.Text, indexed=False)
-  link_urls = db.ListProperty(db.Text, indexed=False)
-  status_time = db.DateTimeProperty(indexed=False)
+  root_pipeline = ndb.KeyProperty(kind=_PipelineRecord)
+  message = ndb.TextProperty()
+  console_url = ndb.TextProperty()
+  link_names = ndb.TextProperty(repeated=True, indexed=False)
+  link_urls = ndb.TextProperty(repeated=True, indexed=False)
+  status_time = ndb.DateTimeProperty(indexed=False)
 
   @classmethod
   def kind(cls):
